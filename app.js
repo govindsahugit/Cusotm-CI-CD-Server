@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express from "express";
 
 const app = express();
@@ -15,7 +16,7 @@ app.post("/deploy", (req, res, next) => {
     const signature =
       "sha256=" +
       crypto
-        .createHmac("sha256", "Gs12@087799")
+        .createHmac("sha256", process.env.WEBHOOK_SECRET)
         .update(JSON.stringify(req.body))
         .digest("hex");
 
