@@ -61,7 +61,7 @@ export const serverController = async (req, res, next) => {
         `Failure ${err.message}`,
         "http://localhost:4000/logs.txt"
       );
-      await sendEmail(req.body.commits[0].committer.email);
+      await sendEmail(req.body);
       await fs.rm("deploy.sh");
       console.log("Error in spawning the process!");
       console.log(err);
