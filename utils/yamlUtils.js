@@ -14,7 +14,7 @@ export const parsedYaml = async () => {
   return { projects };
 };
 
-export const prepareBashFile = async (ref, repositoryName, res) => {
+export const prepareBashFile = async (ref, repositoryName, res, sha) => {
   const branch = ref.split("/").pop();
 
   const { projects } = await parsedYaml();
@@ -31,7 +31,7 @@ export const prepareBashFile = async (ref, repositoryName, res) => {
 
   await (async function () {
     for (const key in repository.commands) {
-      await fs.appendFile("deploy.sh", `${repository.commands[key]}\n`);
+      await fs.appendFile(`${sha}.sh`, `${repository.commands[key]}\n`);
     }
   })();
 };
