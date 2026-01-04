@@ -39,7 +39,6 @@ export const serverController = async (req, res, next) => {
         );
         await fs.rm("deploy.sh");
         console.log("Script executed successfully!");
-        console.log(req.body.commits[0].committer.email);
       } else {
         await setGithubStatus(
           repositoryName,
