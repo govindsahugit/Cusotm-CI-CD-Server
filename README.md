@@ -10,11 +10,13 @@ A lightweight, configuration-driven CI/CD server built from scratch using Node.j
 - **Concurrency Safe**: Generates unique shell scripts based on Commit SHA to handle simultaneous pushes without interference.
 - **Failure Notifications**: Sends immediate email alerts via Resend API if a pipeline fails.
 - **Automatic Cleanup**: Temporary deployment scripts are deleted after execution to keep the server clean.
+- **Branch-Based Deployment 🌱🌳**: Automatically detects if a push is to develop or main. It routes develop to your TEST environment (test.api.govindsahu.me) and main to your PROD environment (api.govindsahu.me).
 
 ## 🛠️ Tech Stack
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
+- **Status Reporting**: GitHub Status API
 - **Parsing**: js-yaml
 - **Communication**: Axios, Resend API
 - **Security**: Crypto (HMAC verification)
@@ -36,6 +38,7 @@ A lightweight, configuration-driven CI/CD server built from scratch using Node.j
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js v18+
 - GitHub Personal Access Token (repo:status permissions)
 - Resend API Key
@@ -43,6 +46,7 @@ A lightweight, configuration-driven CI/CD server built from scratch using Node.j
 ### Configuration
 
 Create `.env` in the server directory:
+
 ```
 PORT=4000
 GITHUB_TOKEN=your_github_token
@@ -51,16 +55,25 @@ EMAIL_RESEND_KEY=your_resend_key
 ```
 
 Edit `workspace.yml`:
+
 ```yaml
 projects:
-    - name: "Your-Repo-Name"
-        branch: "main"
+  - name: "StorageApp-Backend"
+    environments:
+      - branch: "main"
+        env_name: "PROD"
         commands:
-            test: "npm test"
-            deploy: "pm2 reload app"
+          run: |
+            ssh -i "${SSH_KEY}" "${USER}"@"${HOST}" "cd /prod/app && git pull origin main && pm2 reload app"
+      - branch: "develop"
+        env_name: "TEST"
+        commands:
+          run: |
+            ssh -i "${SSH_KEY}" "${USER}"@"${HOST}" "cd /test/app && git pull origin develop && pm2 reload app-test"
 ```
 
 ### Installation
+
 ```bash
 npm install
 npm run dev
