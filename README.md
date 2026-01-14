@@ -1,92 +1,62 @@
-# Custom Node.js CI/CD Server ⚙️🚀
+# Professional Node.js CI/CD Orchestrator ⚙️🚀
 
-A lightweight, configuration-driven CI/CD server built from scratch using Node.js. This server automates deployment workflows by listening for GitHub webhooks, executing build/deploy scripts defined in a YAML config, and providing real-time feedback through the GitHub Commit Status API.
+A custom-built, configuration-driven CI/CD server designed for high-availability deployments. Automates code-to-production transitions using industry-standard patterns: Symlink Switching, Health-Check Verification, and Automatic Rollbacks.
+
+## 🏗️ Architectural Overview
+
+This orchestrator implements a professional Release-Based architecture:
+
+- **Immutable Releases**: Each deployment isolated in timestamped directories (e.g., `20260114-sha`)
+- **Atomic Symlink Swapping**: Current directory symlink points to active release; version swaps take milliseconds
+- **Zero-Downtime Engine**: PM2 Cluster Mode with ready signal logic ensures old process stops only after new one is healthy
 
 ## 🌟 Key Features
 
-- **Config-Driven Workflow**: Manage multiple projects through a single `workspace.yml` file with custom commands for testing, building, and deploying.
-- **GitHub Status Integration**: Automatically updates commit statuses (Pending 🟡, Success ✅, Failure ❌) so developers see pipeline progress in their repo.
-- **Secure Webhooks**: Uses HMAC SHA-256 signature verification to ensure only legitimate GitHub requests trigger the pipeline.
-- **Concurrency Safe**: Generates unique shell scripts based on Commit SHA to handle simultaneous pushes without interference.
-- **Failure Notifications**: Sends immediate email alerts via Resend API if a pipeline fails.
-- **Automatic Cleanup**: Temporary deployment scripts are deleted after execution to keep the server clean.
-- **Branch-Based Deployment 🌱🌳**: Automatically detects if a push is to develop or main. It routes develop to your TEST environment (test.api.govindsahu.me) and main to your PROD environment (api.govindsahu.me).
-
-## 🛠️ Tech Stack
-
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Status Reporting**: GitHub Status API
-- **Parsing**: js-yaml
-- **Communication**: Axios, Resend API
-- **Security**: Crypto (HMAC verification)
+- **Config-as-Code**: Branch-based routing (TEST vs PROD) via `workspace.yml`
+- **Health Checks**: Post-deployment `/health` endpoint verification with retry mechanism
+- **Automated Rollback**: Failed health checks trigger automatic restoration to previous stable version
+- **Disk Management**: Cleanup utility maintains only 2 most recent releases
+- **Secure Webhooks**: HMAC SHA-256 signature verification for GitHub authentication
+- **Real-time Feedback**: GitHub Commit Status API integration for PR updates
 
 ## 📂 Project Structure
 
 ```
-├── server/
-│   ├── controllers/      # Webhook processing logic
-│   ├── middlewares/      # GitHub signature verification
-│   ├── routes/           # Webhook route definitions
-│   ├── services/         # GitHub API & email notifications
-│   ├── utils/            # YAML parsing & file preparation
-│   ├── logs/             # Build logs (static files)
-│   ├── workspace.yml     # Project configuration
-│   └── app.js            # Server entry point
+├── app.js
+├── workspace.yml
+├── controllers/
+│   └── controller.js
+├── middlewares/
+│   └── githubMiddleware.js
+├── services/
+│   ├── statusApis.js
+│   └── sendEmail.js
+└── utils/
+  ├── scriptUtils.js
+  ├── processUtils.js
+  └── eventUtils.js
 ```
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### Prerequisites
+**Prerequisites**: Node.js v20+, PM2, GitHub Personal Access Token, Resend API Key
 
-- Node.js v18+
-- GitHub Personal Access Token (repo:status permissions)
-- Resend API Key
-
-### Configuration
-
-Create `.env` in the server directory:
-
-```
-PORT=4000
-GITHUB_TOKEN=your_github_token
-WEBHOOK_SECRET=your_webhook_secret
-EMAIL_RESEND_KEY=your_resend_key
-```
-
-Edit `workspace.yml`:
-
-```yaml
-projects:
-  - name: "StorageApp-Backend"
-    environments:
-      - branch: "main"
-        env_name: "PROD"
-        commands:
-          run: |
-            ssh -i "${SSH_KEY}" "${USER}"@"${HOST}" "cd /prod/app && git pull origin main && pm2 reload app"
-      - branch: "develop"
-        env_name: "TEST"
-        commands:
-          run: |
-            ssh -i "${SSH_KEY}" "${USER}"@"${HOST}" "cd /test/app && git pull origin develop && pm2 reload app-test"
-```
-
-### Installation
-
+**Setup**:
 ```bash
 npm install
 npm run dev
 ```
 
-## 🔒 Security
+**Configuration**: Add `.env` with `PORT`, `WEBHOOK_SECRET`, `GITHUB_TOKEN`, `EMAIL_RESEND_KEY`
 
-The server verifies every request using the `x-hub-signature-256` header against your `WEBHOOK_SECRET`. Unmatched requests are ignored.
+## ⏪ Automatic Rollback Logic
 
-## 📧 Failure Alerts
+Failed deployments trigger an automated recovery sequence:
 
-On build failure, the server extracts the committer's email from the GitHub payload and sends a detailed report with commit message and hash.
+1. **Detection**: `checkHealth` fails after 5 retry attempts
+2. **Recovery**: System retrieves `PREVIOUS_RELEASE` SHA from GitHub payload
+3. **Restore**: SSH command executes atomic symlink swap to previous release and reloads PM2
 
 ---
 
-Developed as a deep-dive into DevOps and Backend Engineering.
+**Note**: This project demonstrates advanced Backend Engineering and DevOps orchestration patterns.
