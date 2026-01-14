@@ -1,11 +1,6 @@
-import {
-  onCloseForStartingScript,
-  onErrorForStartingScript,
-  prepareScript,
-  spawnChildProcess,
-  stderrOnDataForStartingScript,
-  stdoutOnDataForStartingScript,
-} from "../utils/utils.js";
+import { onCloseForStartingScript, onError, stderrOnData, stdoutOnData } from "../utils/eventUtils.js";
+import { spawnChildProcess } from "../utils/processUtils.js";
+import { prepareScript } from "../utils/scriptUtils.js";
 
 export const serverController = async (req, res, next) => {
   console.log("webhook started!");
@@ -17,12 +12,11 @@ export const serverController = async (req, res, next) => {
 
     await spawnChildProcess({
       sha,
-      stdoutOnData: (data) => stdoutOnDataForStartingScript(data),
-      stderrOnData: (data) => stderrOnDataForStartingScript(data),
+      stdoutOnData,
+      stderrOnData,
       onClose: (code) =>
         onCloseForStartingScript({ code, req, sha, repositoryName }),
-      onError: (err) =>
-        onErrorForStartingScript({ err, req, sha, repositoryName }),
+      onError: (err) => onError({ err, req, sha, repositoryName }),
     });
   } catch (error) {
     next(error);

@@ -1,77 +1,6 @@
 import axios from "axios";
-import { spawn } from "child_process";
 import fs from "fs/promises";
-import { setGithubStatus } from "../services/statusApis.js";
 import yaml from "js-yaml";
-import { sendEmail } from "../services/sendEmail.js";
-
-// Helper function to verify the app is healthy
-export const checkHealth = async (url, retries = 5) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await axios.get(url);
-      if (response.status === 200) return true;
-    } catch (err) {
-      console.log(`Health check attempt ${i + 1} failed. Retrying...`);
-      // Wait 2 seconds before retrying
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
-  }
-  return false;
-};
-
-export const triggerRollback = async (req) => {
-  const repositoryName = req.body.repository.full_name;
-  const prevSha = req.body.before;
-  const sha = req.body.after;
-
-  await prepareRollbackScript(req);
-
-  const bashChildProcess = spawn("bash", [`./${prevSha}.sh`]);
-
-  bashChildProcess.stdout.on("data", async (data) => {
-    process.stdout.write(data);
-    await fs.appendFile("./logs/logs.txt", data.toString(), "utf8");
-  });
-
-  bashChildProcess.stderr.on("data", async (data) => {
-    process.stderr.write(data);
-    await fs.appendFile("./logs/logs.txt", data.toString(), "utf8");
-  });
-
-  bashChildProcess.on("close", async () => {
-    await setGithubStatus(
-      repositoryName,
-      sha,
-      "failure",
-      `Health check failed. Auto-rolled back to previous version. ⏪`,
-      "http://localhost:4000/logs.txt"
-    );
-    await fs.rm(`${prevSha}.sh`);
-  });
-};
-
-export const cleanupDisk = async (req) => {
-  const sha = req.body.after;
-
-  await prepareCleanupScript(req);
-
-  const bashChildProcess = spawn("bash", [`./${sha}.sh`]);
-
-  bashChildProcess.stdout.on("data", async (data) => {
-    process.stdout.write(data);
-    await fs.appendFile("./logs/logs.txt", data.toString(), "utf8");
-  });
-
-  bashChildProcess.stderr.on("data", async (data) => {
-    process.stderr.write(data);
-    await fs.appendFile("./logs/logs.txt", data.toString(), "utf8");
-  });
-
-  bashChildProcess.on("close", async () => {
-    await fs.rm(`${sha}.sh`);
-  });
-};
 
 export const getFormattedDate = () => {
   const date = new Date();
@@ -94,146 +23,16 @@ export const parsedYaml = async (yamlFile) => {
   return data;
 };
 
-export const prepareRollbackScript = async (req) => {
-  const prevSHA = req.body.before;
-
-  process.env.PREVIOUS_RELEASE = prevSHA;
-
-  const { environment } = await prepareBashFile(req);
-
-  const fullScript = Object.values(environment.rollback).join("\n") + "\n";
-  await fs.writeFile(`${prevSHA}.sh`, fullScript, "utf8");
-};
-
-export const prepareScript = async (req) => {
-  const sha = req.body.after;
-
-  process.env.NEW_RELEASE = `${getFormattedDate()}-${sha}`;
-  process.env.CLONE_URL = req.body.repository.clone_url;
-
-  const { environment } = await prepareBashFile(req);
-
-  const fullScript = Object.values(environment.commands).join("\n") + "\n";
-  await fs.writeFile(`${sha}.sh`, fullScript, "utf8");
-};
-
-export const prepareCleanupScript = async (req) => {
-  const sha = req.body.after;
-  const { environment } = await prepareBashFile(req);
-
-  const fullScript = Object.values(environment.cleanup).join("\n") + "\n";
-
-  await fs.writeFile(`${sha}.sh`, fullScript, "utf8");
-};
-
-export const prepareBashFile = async (req) => {
-  const ref = req.body.ref;
-  const branch = ref.split("/").pop();
-
-  const repositoryName = req.body.repository.name;
-
-  const data = await parsedYaml("workspace.yml");
-
-  const repository = data.projects.find(
-    (project) => project.name === repositoryName
-  );
-
-  const environment = repository.environments.find(
-    (env) => env.branch === branch
-  );
-
-  if (!environment) {
-    throw new Error(`No environment configuration found for branch: ${branch}`);
-  }
-
-  return { environment };
-};
-
-export const stdoutOnDataForStartingScript = async (data) => {
-  process.stdout.write(data);
-  await fs.appendFile("./logs/logs.txt", data.toString(), "utf8");
-};
-
-export const stderrOnDataForStartingScript = async (data) => {
-  process.stderr.write(data);
-  await fs.writeFile("./logs/logs.txt", data.toString(), "utf8");
-};
-
-export const onCloseForStartingScript = async ({
-  code,
-  req,
-  sha,
-  repositoryName,
-}) => {
-  if (code === 0) {
-    const isHealthy = await checkHealth(
-      "https://test.api.govindsahu.me/health"
-    );
-
-    if (isHealthy) {
-      await setGithubStatus(
-        repositoryName,
-        sha,
-        "success",
-        "Build and deployed succefull!",
-        "http://localhost:4000/logs.txt"
-      );
-
-      await cleanupDisk(req);
-
-      console.log("Script executed successfully!");
-    } else {
-      console.log("🚨 App is unhealthy! Triggering automatic rollback...");
-      await triggerRollback(req);
+export const checkHealth = async (url, retries = 5) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axios.get(url);
+      if (response.status === 200) return true;
+    } catch (err) {
+      console.log(`Health check attempt ${i + 1} failed. Retrying...`);
+      // Wait 2 seconds before retrying
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
-  } else {
-    await setGithubStatus(
-      repositoryName,
-      sha,
-      "failure",
-      `Failed to run pipeline for commit ${req.body.commits[0].message}`,
-      "http://localhost:4000/logs.txt"
-    );
-    await sendEmail(req.body);
-    await fs.rm(`${sha}.sh`);
-    console.log("Script execution failed!");
   }
-};
-
-export const onErrorForStartingScript = async ({
-  err,
-  req,
-  sha,
-  repositoryName,
-}) => {
-  await setGithubStatus(
-    repositoryName,
-    sha,
-    "failure",
-    `Failure ${err.message}`,
-    "http://localhost:4000/logs.txt"
-  );
-  await sendEmail(req.body);
-  await fs.rm(`${sha}.sh`);
-  console.log("Error in spawning the process!");
-  console.log(err);
-  await fs.writeFile("./logs/logs.txt", err.toString(), "utf8");
-};
-
-export const spawnChildProcess = async ({
-  sha,
-  stdoutOnData,
-  stderrOnData,
-  onClose,
-  onError,
-}) => {
-  const bashChildProcess = spawn("bash", [`./${sha}.sh`]);
-
-  bashChildProcess.stdout.on("data", async (data) => stdoutOnData(data));
-
-  bashChildProcess.stderr.on("data", async (data) => stderrOnData(data));
-
-  bashChildProcess.on("close", async (code) => onClose(code));
-
-  bashChildProcess.on("error", async (err) => onError(err));
+  return false;
 };

@@ -5,8 +5,6 @@ projects:
         env_name: "PROD"
         commands:
           run: |
-            # Setup SSH key and known_hosts
-            # Add server host key so SSH does not ask for confirmation
             ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
             ssh -i "${SSH_SECRET_KEY_PATH}" "${SSH_USER}"@"${SSH_HOST}" "bash" << 'EOF'
@@ -34,8 +32,6 @@ projects:
             EOF
         rollback:
           run: |
-            # Setup SSH key and known_hosts
-            # Add server host key so SSH does not ask for confirmation
             ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
             ssh -i "${SSH_SECRET_KEY_PATH}" "${SSH_USER}"@"${SSH_HOST}" "bash" << 'EOF'
@@ -57,8 +53,6 @@ projects:
             EOF
         cleanup:
           run: |
-            # Setup SSH key and known_hosts
-            # Add server host key so SSH does not ask for confirmation
             ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
             ssh -i "${SSH_SECRET_KEY_PATH}" "${SSH_USER}"@"${SSH_HOST}" "bash" << 'EOF'
@@ -74,8 +68,6 @@ projects:
         env_name: "TEST"
         commands:
           run: |
-            # Setup SSH key and known_hosts
-            # Add server host key so SSH does not ask for confirmation
             ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
             ssh -i "${SSH_SECRET_KEY_PATH}" "${SSH_USER}"@"${SSH_HOST}" "bash" << 'EOF'
@@ -103,8 +95,6 @@ projects:
             EOF
         rollback:
           run: |
-            # Setup SSH key and known_hosts
-            # Add server host key so SSH does not ask for confirmation
             ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
             ssh -i "${SSH_SECRET_KEY_PATH}" "${SSH_USER}"@"${SSH_HOST}" "bash" << 'EOF'
@@ -126,8 +116,6 @@ projects:
             EOF
         cleanup:
           run: |
-            # Setup SSH key and known_hosts
-            # Add server host key so SSH does not ask for confirmation
             ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts
 
             ssh -i "${SSH_SECRET_KEY_PATH}" "${SSH_USER}"@"${SSH_HOST}" "bash" << 'EOF'
